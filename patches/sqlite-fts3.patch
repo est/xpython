@@ -1,0 +1,79 @@
+--- Makefile.in.orig	2007-11-23 16:05:48.000000000 +0100
++++ Makefile.in	2007-12-06 17:42:10.000000000 +0100
+@@ -71,7 +71,7 @@
+ # default to file, 2 to default to memory, and 3 to force temporary
+ # tables to always be in memory.
+ #
+-TEMP_STORE = -DTEMP_STORE=@TEMP_STORE@
++TEMP_STORE = -DTEMP_STORE=@TEMP_STORE@ -DSQLITE_ENABLE_FTS3
+ 
+ # Version numbers and release number for the SQLite being compiled.
+ #
+@@ -130,7 +130,8 @@
+          select.lo table.lo tokenize.lo trigger.lo update.lo \
+          util.lo vacuum.lo \
+          vdbe.lo vdbeapi.lo vdbeaux.lo vdbeblob.lo vdbefifo.lo vdbemem.lo \
+-         where.lo utf.lo legacy.lo vtab.lo
++         where.lo utf.lo legacy.lo vtab.lo \
++  	 fts3_hash.lo fts3_porter.lo fts3.lo fts3_tokenizer1.lo fts3_tokenizer.lo fts3_icu.lo
+ 
+ # All of the source code files.
+ #
+@@ -201,13 +202,12 @@
+ # Source code for extensions
+ #
+ SRC += \
+-  $(TOP)/ext/fts1/fts1.c \
+-  $(TOP)/ext/fts1/fts1.h \
+-  $(TOP)/ext/fts1/fts1_hash.c \
+-  $(TOP)/ext/fts1/fts1_hash.h \
+-  $(TOP)/ext/fts1/fts1_porter.c \
+-  $(TOP)/ext/fts1/fts1_tokenizer.h \
+-  $(TOP)/ext/fts1/fts1_tokenizer1.c
++  $(TOP)/ext/fts3/fts3.c \
++  $(TOP)/ext/fts3/fts3_hash.c \
++  $(TOP)/ext/fts3/fts3_porter.c \
++  $(TOP)/ext/fts3/fts3_tokenizer1.c \
++  $(TOP)/ext/fts3/fts3_icu.c \
++  $(TOP)/ext/fts3/fts3_tokenizer.c
+ 
+ 
+ # Source code to the test files.
+@@ -281,9 +281,9 @@
+ # Header files used by extensions
+ #
+ HDR += \
+-  $(TOP)/ext/fts1/fts1.h \
+-  $(TOP)/ext/fts1/fts1_hash.h \
+-  $(TOP)/ext/fts1/fts1_tokenizer.h
++  $(TOP)/ext/fts3/fts3.h \
++  $(TOP)/ext/fts3/fts3_hash.h \
++  $(TOP)/ext/fts3/fts3_tokenizer.h
+ 
+ # Header files used by the VDBE submodule
+ #
+@@ -346,6 +346,24 @@
+ 
+ # Rules to build individual files
+ #
++fts3.lo: $(TOP)/ext/fts3/fts3.c $(HDR)
++	$(LTCOMPILE) $(TEMP_STORE) -DSQLITE_CORE -c $(TOP)/ext/fts3/fts3.c
++
++fts3_hash.lo: $(TOP)/ext/fts3/fts3_hash.c $(HDR)
++	$(LTCOMPILE) $(TEMP_STORE) -DSQLITE_CORE -c $(TOP)/ext/fts3/fts3_hash.c
++
++fts3_porter.lo: $(TOP)/ext/fts3/fts3_porter.c $(HDR)
++	$(LTCOMPILE) $(TEMP_STORE) -DSQLITE_CORE -c $(TOP)/ext/fts3/fts3_porter.c
++
++fts3_tokenizer1.lo: $(TOP)/ext/fts3/fts3_tokenizer1.c $(HDR)
++	$(LTCOMPILE) $(TEMP_STORE) -DSQLITE_CORE -c $(TOP)/ext/fts3/fts3_tokenizer1.c
++
++fts3_icu.lo: $(TOP)/ext/fts3/fts3_icu.c $(HDR)
++	$(LTCOMPILE) $(TEMP_STORE) -DSQLITE_CORE -c $(TOP)/ext/fts3/fts3_icu.c
++
++fts3_tokenizer.lo: $(TOP)/ext/fts3/fts3_tokenizer.c $(HDR)
++	$(LTCOMPILE) $(TEMP_STORE) -DSQLITE_CORE -c $(TOP)/ext/fts3/fts3_tokenizer.c
++
+ alter.lo:	$(TOP)/src/alter.c $(HDR)
+ 	$(LTCOMPILE) -c $(TOP)/src/alter.c
+ 

@@ -1,0 +1,4 @@
+#include <windows.h>
+
+MYICON1	    ICON    "xpython.ico"
+

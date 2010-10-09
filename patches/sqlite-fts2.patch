@@ -1,0 +1,75 @@
+--- Makefile.in.orig	2007-07-26 10:29:12.000000000 +0200
++++ Makefile.in	2007-07-26 11:03:36.000000000 +0200
+@@ -71,7 +71,7 @@
+ # default to file, 2 to default to memory, and 3 to force temporary
+ # tables to always be in memory.
+ #
+-TEMP_STORE = -DTEMP_STORE=@TEMP_STORE@
++TEMP_STORE = -DTEMP_STORE=@TEMP_STORE@ -DSQLITE_ENABLE_FTS2 -DSQLITE_ENABLE_BROKEN_FTS2
+ 
+ # Version numbers and release number for the SQLite being compiled.
+ #
+@@ -128,7 +128,8 @@
+          select.lo table.lo tokenize.lo trigger.lo update.lo \
+          util.lo vacuum.lo \
+          vdbe.lo vdbeapi.lo vdbeaux.lo vdbeblob.lo vdbefifo.lo vdbemem.lo \
+-         where.lo utf.lo legacy.lo vtab.lo
++         where.lo utf.lo legacy.lo vtab.lo \
++  	 fts2_hash.lo fts2_porter.lo fts2.lo fts2_tokenizer1.lo fts2_tokenizer.lo 
+ 
+ # All of the source code files.
+ #
+@@ -190,13 +191,11 @@
+ # Source code for extensions
+ #
+ SRC += \
+-  $(TOP)/ext/fts1/fts1.c \
+-  $(TOP)/ext/fts1/fts1.h \
+-  $(TOP)/ext/fts1/fts1_hash.c \
+-  $(TOP)/ext/fts1/fts1_hash.h \
+-  $(TOP)/ext/fts1/fts1_porter.c \
+-  $(TOP)/ext/fts1/fts1_tokenizer.h \
+-  $(TOP)/ext/fts1/fts1_tokenizer1.c
++  $(TOP)/ext/fts2/fts2.c \
++  $(TOP)/ext/fts2/fts2_hash.c \
++  $(TOP)/ext/fts2/fts2_porter.c \
++  $(TOP)/ext/fts2/fts2_tokenizer1.c \
++  $(TOP)/ext/fts2/fts2_tokenizer.c
+ 
+ 
+ # Source code to the test files.
+@@ -257,9 +256,9 @@
+ # Header files used by extensions
+ #
+ HDR += \
+-  $(TOP)/ext/fts1/fts1.h \
+-  $(TOP)/ext/fts1/fts1_hash.h \
+-  $(TOP)/ext/fts1/fts1_tokenizer.h
++  $(TOP)/ext/fts2/fts2.h \
++  $(TOP)/ext/fts2/fts2_hash.h \
++  $(TOP)/ext/fts2/fts2_tokenizer.h
+ 
+ # Header files used by the VDBE submodule
+ #
+@@ -322,6 +321,21 @@
+ 
+ # Rules to build individual files
+ #
++fts2.lo: $(TOP)/ext/fts2/fts2.c $(HDR)
++	$(LTCOMPILE) $(TEMP_STORE) -DSQLITE_CORE -c $(TOP)/ext/fts2/fts2.c
++
++fts2_hash.lo: $(TOP)/ext/fts2/fts2_hash.c $(HDR)
++	$(LTCOMPILE) $(TEMP_STORE) -DSQLITE_CORE -c $(TOP)/ext/fts2/fts2_hash.c
++
++fts2_porter.lo: $(TOP)/ext/fts2/fts2_porter.c $(HDR)
++	$(LTCOMPILE) $(TEMP_STORE) -DSQLITE_CORE -c $(TOP)/ext/fts2/fts2_porter.c
++
++fts2_tokenizer1.lo: $(TOP)/ext/fts2/fts2_tokenizer1.c $(HDR)
++	$(LTCOMPILE) $(TEMP_STORE) -DSQLITE_CORE -c $(TOP)/ext/fts2/fts2_tokenizer1.c
++
++fts2_tokenizer.lo: $(TOP)/ext/fts2/fts2_tokenizer.c $(HDR)
++	$(LTCOMPILE) $(TEMP_STORE) -DSQLITE_CORE -c $(TOP)/ext/fts2/fts2_tokenizer.c
++
+ alter.lo:	$(TOP)/src/alter.c $(HDR)
+ 	$(LTCOMPILE) -c $(TOP)/src/alter.c
+ 

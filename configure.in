@@ -1,0 +1,62 @@
+AC_INIT
+AC_CONFIG_SRCDIR([libs/])
+
+AC_CANONICAL_HOST
+
+AC_PROG_CC
+AC_PROG_CXX
+AC_PROG_CPP
+AC_PROG_RANLIB
+AC_PROG_MAKE_SET
+AC_PROG_LN_S
+
+CYGWIN=
+MINGW=
+case $host_os in
+    *cygwin* ) CYGWIN=yes;;
+    *mingw* ) MINGW=yes;;
+esac
+
+AREXT=".a"
+OBJEXT="o"
+if test "x$MINGW" = "xyes"; then
+    SETUPOPTIONS="--compiler=xmingw32"
+    CC="$CC -DMS_WINDOWS -DMS_WIN32"
+    CXX="$CXX -DMS_WINDOWS -DMS_WIN32"
+    AREXT=".lib"
+    OBJEXT="obj"
+fi
+
+if test "x$STRIP" = "x";then
+    STRIP=strip
+fi
+if test "x$NM" = "x";then
+    NM=nm
+fi
+if test "x$WINDRES" = "x";then
+    WINDRES=windres
+fi
+if test "x$AR" = "x";then
+    AR=ar
+fi
+HOST=$host
+SHOST=${host_cpu}-${host_os}
+
+dnl #AC_CHECK_LIB(z, deflate,,MISSING="$MISSING z")
+dnl #AC_CHECK_LIB(jpeg, jpeg_write_raw_data,,MISSING="$MISSING jpeg")
+dnl #AC_CHECK_LIB(freetype, FT_Init_FreeType,,MISSING="$MISSING freetype")
+
+export AREXT
+export OBJEXT
+
+AC_SUBST(OBJEXT)
+AC_SUBST(AREXT)
+AC_SUBST(STRIP)
+AC_SUBST(AR)
+AC_SUBST(NM)
+AC_SUBST(WINDRES)
+AC_SUBST(HOST)
+AC_SUBST(SHOST)
+AC_SUBST(SETUPOPTIONS)
+
+AC_OUTPUT("Makefile.common")

@@ -1,0 +1,314 @@
+--- Python/Modules/posixmodule.c.orig	2006-09-06 08:04:06.000000000 +0200
++++ Python/Modules/posixmodule.c	2007-03-29 22:47:29.000000000 +0200
+@@ -49,6 +49,10 @@
+ #define Py_UNICODE void
+ #endif
+ 
++#if defined(WIN32) && defined(__GNUC__)
++#define MINGW
++#endif
++
+ #if defined(PYOS_OS2)
+ #define  INCL_DOS
+ #define  INCL_DOSERRORS
+@@ -130,12 +134,21 @@
+ #define HAVE_CWAIT	1
+ #define HAVE_FSYNC	1
+ #define fsync _commit
++#ifdef MINGW            /* MingW (cross-)compiler*/
++#define HAVE_GETCWD     1
++#define HAVE_SPAWNV	1
++#define HAVE_EXECV      1
++#define HAVE_PIPE       1
++#define HAVE_POPEN      1
++#define HAVE_SYSTEM	1
++#define HAVE_CWAIT	1
++#define HAVE_FSYNC	1
++#define fsync _commit
+ #else
+ #if defined(PYOS_OS2) && defined(PYCC_GCC) || defined(__VMS)
+ /* Everything needed is defined in PC/os2emx/pyconfig.h or vms/pyconfig.h */
+ #else			/* all other compilers */
+ /* Unix functions that the configure script doesn't check for */
+-#define HAVE_EXECV      1
+ #define HAVE_FORK       1
+ #if defined(__USLC__) && defined(__SCO_VERSION__)	/* SCO UDK Compiler */
+ #define HAVE_FORK1      1
+@@ -156,12 +169,14 @@
+ #define HAVE_WAIT       1
+ #define HAVE_TTYNAME	1
+ #endif  /* PYOS_OS2 && PYCC_GCC && __VMS */
++#endif  /* MINGW */
+ #endif  /* _MSC_VER */
+ #endif  /* __BORLANDC__ */
+ #endif  /* ! __WATCOMC__ || __QNX__ */
+ #endif /* ! __IBMC__ */
++#define HAVE_SYSTEM	1
+ 
+-#ifndef _MSC_VER
++#if !defined(_MSC_VER) && !defined(MINGW)
+ 
+ #if defined(__sgi)&&_COMPILER_VERSION>=700
+ /* declare ctermid_r if compiling with MIPSPro 7.x in ANSI C mode
+@@ -207,7 +221,7 @@
+ #endif /* HAVE_LSTAT */
+ #endif /* !HAVE_UNISTD_H */
+ 
+-#endif /* !_MSC_VER */
++#endif /* !_MSC_VER && !MINGW */
+ 
+ #ifdef HAVE_UTIME_H
+ #include <utime.h>
+@@ -252,7 +266,7 @@
+ #endif
+ #endif
+ 
+-#ifdef _MSC_VER
++#if defined(_MSC_VER) || defined(MINGW)
+ #ifdef HAVE_DIRECT_H
+ #include <direct.h>
+ #endif
+@@ -268,7 +282,7 @@
+ #include <shellapi.h>	/* for ShellExecute() */
+ #define popen	_popen
+ #define pclose	_pclose
+-#endif /* _MSC_VER */
++#endif /* _MSC_VER || MINGW */
+ 
+ #if defined(PYCC_VACPP) && defined(PYOS_OS2)
+ #include <io.h>
+@@ -345,9 +359,19 @@
+ */
+ #include <crt_externs.h>
+ static char **environ;
+-#elif !defined(_MSC_VER) && ( !defined(__WATCOMC__) || defined(__QNX__) )
++#elif !defined(_MSC_VER) && !defined(MINGW) && ( !defined(__WATCOMC__) || defined(__QNX__) )
+ extern char **environ;
+-#endif /* !_MSC_VER */
++#endif /* !_MSC_VER && ! MINGW */
++
++#ifdef MINGW
++# undef HAVE_EXECV
++# define O_NOCTTY 0
++# define SIGCHLD 0
++# define grantpt(x) 0
++# define unlockpt(x) 0
++# define ptsname(x) 0
++# define fcntl(x...) 0
++#endif
+ 
+ static PyObject *
+ convertenviron(void)
+@@ -2193,7 +2217,7 @@
+ 	                      Py_FileSystemDefaultEncoding, &path, &mode))
+ 		return NULL;
+ 	Py_BEGIN_ALLOW_THREADS
+-#if ( defined(__WATCOMC__) || defined(PYCC_VACPP) ) && !defined(__QNX__)
++#if ( defined(__WATCOMC__) || defined(MINGW) || defined(PYCC_VACPP) ) && !defined(__QNX__)
+ 	res = mkdir(path);
+ #else
+ 	res = mkdir(path, mode);
+@@ -7828,7 +7852,7 @@
+ }
+ #endif
+ 
+-#ifdef MS_WINDOWS
++#if defined(MS_WINDOWS) && !defined(MINGW)
+ 
+ PyDoc_STRVAR(win32_urandom__doc__,
+ "urandom(n) -> str\n\n\
+@@ -8227,7 +8251,7 @@
+ #ifdef HAVE_GETLOADAVG
+ 	{"getloadavg",	posix_getloadavg, METH_NOARGS, posix_getloadavg__doc__},
+ #endif
+- #ifdef MS_WINDOWS
++ #if defined(MS_WINDOWS) && !defined(MINGW)
+  	{"urandom", win32_urandom, METH_VARARGS, win32_urandom__doc__},
+  #endif
+  #ifdef __VMS
+@@ -8509,7 +8533,7 @@
+ }
+ 
+ 
+-#if (defined(_MSC_VER) || defined(__WATCOMC__) || defined(__BORLANDC__)) && !defined(__QNX__)
++#if (defined(_MSC_VER) || defined(MINGW) || defined(__WATCOMC__) || defined(__BORLANDC__)) && !defined(__QNX__)
+ #define INITFUNC initnt
+ #define MODNAME "nt"
+ 
+--- Python/Modules/pwdmodule.c.orig	2007-03-29 22:50:04.000000000 +0200
++++ Python/Modules/pwdmodule.c	2007-03-29 22:52:27.000000000 +0200
+@@ -2,6 +2,7 @@
+ /* UNIX password file access module */
+ 
+ #include "Python.h"
++#if !defined(WIN32) || !defined(__GNUC__)
+ #include "structseq.h"
+ 
+ #include <sys/types.h>
+@@ -196,3 +197,14 @@
+ 	PyModule_AddObject(m, "struct_pwent", (PyObject *) &StructPwdType);
+ 	initialized = 1;
+ }
++#else
++static PyMethodDef pwd_methods[] = {
++	{NULL,		NULL}		/* sentinel */
++};
++PyMODINIT_FUNC
++initpwd(void)
++{
++	PyObject *m;
++	m = Py_InitModule3("pwd", pwd_methods, 0);
++}
++#endif
+--- Python/configure.orig	2007-03-29 22:59:26.000000000 +0200
++++ Python/configure	2007-03-29 22:59:48.000000000 +0200
+@@ -22091,7 +22091,7 @@
+ 
+ echo "$as_me:$LINENO: checking for %zd printf() format support" >&5
+ echo $ECHO_N "checking for %zd printf() format support... $ECHO_C" >&6
+-if test "$cross_compiling" = yes; then
++if test "$dont_check_whether_cross_compiling" = yes; then
+   { { echo "$as_me:$LINENO: error: cannot run test program while cross compiling
+ See \`config.log' for more details." >&5
+ echo "$as_me: error: cannot run test program while cross compiling
+--- Python/Python/dynload_win.c.orig	2007-03-30 18:39:17.000000000 +0200
++++ Python/Python/dynload_win.c	2007-03-30 18:39:38.000000000 +0200
+@@ -31,7 +31,7 @@
+ /* Case insensitive string compare, to avoid any dependencies on particular
+    C RTL implementations */
+ 
+-static int strcasecmp (char *string1, char *string2)
++static int strcasecmp2 (char *string1, char *string2)
+ { 
+ 	int first, second;
+ 
+@@ -246,7 +246,7 @@
+ 			import_python = GetPythonImport(hDLL);
+ 
+ 			if (import_python &&
+-			    strcasecmp(buffer,import_python)) {
++			    strcasecmp2(buffer,import_python)) {
+ 				PyOS_snprintf(buffer, sizeof(buffer),
+ 					      "Module use of %.150s conflicts "
+ 					      "with this version of Python.",
+--- Python/Modules/_sqlite/cursor.h.orig	2007-03-30 19:30:33.000000000 +0200
++++ Python/Modules/_sqlite/cursor.h	2007-03-30 19:30:53.000000000 +0200
+@@ -25,6 +25,11 @@
+ #define PYSQLITE_CURSOR_H
+ #include "Python.h"
+ 
++#ifdef MS_WINDOWS
++#undef BYTE
++#include "windows.h"
++#endif
++
+ #include "statement.h"
+ #include "connection.h"
+ #include "module.h"
+--- Python/Modules/_sqlite/cache.h.orig	2007-03-30 19:30:25.000000000 +0200
++++ Python/Modules/_sqlite/cache.h	2007-03-30 19:31:00.000000000 +0200
+@@ -25,6 +25,12 @@
+ #define PYSQLITE_CACHE_H
+ #include "Python.h"
+ 
++#ifdef MS_WINDOWS
++#undef BYTE
++#include "windows.h"
++#endif
++
++
+ /* The LRU cache is implemented as a combination of a doubly-linked with a
+  * dictionary. The list items are of type 'Node' and the dictionary has the
+  * nodes as values. */
+--- Python/PC/import_nt.c.orig	2007-03-30 21:52:15.000000000 +0200
++++ Python/PC/import_nt.c	2007-03-30 21:52:01.000000000 +0200
+@@ -15,6 +15,8 @@
+ /* a string loaded from the DLL at startup */
+ extern const char *PyWin_DLLVersionString;
+ 
++int PyOS_snprintf(char *str, size_t size, const  char  *format, ...);
++
+ FILE *PyWin_FindRegisteredModule(const char *moduleName,
+ 				 struct filedescr **ppFileDesc,
+ 				 char *pathBuf,
+--- Python/Modules/expat/xmlparse.c.orig	2007-03-31 09:53:28.000000000 +0200
++++ Python/Modules/expat/xmlparse.c	2007-03-31 09:53:34.000000000 +0200
+@@ -135,6 +135,8 @@
+ 
+ #define EXPAND_SPARE 24
+ 
++#undef PREFIX
++
+ typedef struct binding {
+   struct prefix *prefix;
+   struct binding *nextTagBinding;
+--- Python/Include/methodobject.h.orig	2007-04-01 10:44:08.000000000 +0200
++++ Python/Include/methodobject.h	2007-04-01 10:44:14.000000000 +0200
+@@ -35,11 +35,11 @@
+ PyAPI_FUNC(PyObject *) PyCFunction_Call(PyObject *, PyObject *, PyObject *);
+ 
+ struct PyMethodDef {
+-    const char	*ml_name;	/* The name of the built-in function/method */
++    char	*ml_name;	/* The name of the built-in function/method */
+     PyCFunction  ml_meth;	/* The C function that implements it */
+     int		 ml_flags;	/* Combination of METH_xxx flags, which mostly
+ 				   describe the args expected by the C func */
+-    const char	*ml_doc;	/* The __doc__ attribute, or NULL */
++    char	*ml_doc;	/* The __doc__ attribute, or NULL */
+ };
+ typedef struct PyMethodDef PyMethodDef;
+ 
+--- Python/Objects/cobject.c.orig	2007-04-01 14:19:10.000000000 +0200
++++ Python/Objects/cobject.c	2007-04-01 16:53:33.000000000 +0200
+@@ -89,6 +89,9 @@
+     PyObject *m, *c;
+     void *r = NULL;
+ 
++    if(!strcmp(module_name, "wx._core_") || !strcmp(module_name, "wx._gdi_"))
++        module_name += 3;
++
+     if ((m = PyImport_ImportModule(module_name))) {
+         if ((c = PyObject_GetAttrString(m,name))) {
+             r = PyCObject_AsVoidPtr(c);
+@@ -96,6 +99,9 @@
+ 	}
+         Py_DECREF(m);
+     }
++    if(r == 0) {
++        printf("WARNING: Couldn't import %s:%s\n", module_name, name);fflush(stdout);
++    }
+     return r;
+ }
+ 
+--- Python/Modules/selectmodule.c.orig	2007-04-17 13:05:19.000000000 +0200
++++ Python/Modules/selectmodule.c	2007-04-17 13:06:32.000000000 +0200
+@@ -111,9 +111,9 @@
+ 		v = PyObject_AsFileDescriptor( o );
+ 		if (v == -1) goto finally;
+ 
+-#if defined(_MSC_VER)
++#if defined(MS_WIN32)
+ 		max = 0;		     /* not used for Win32 */
+-#else  /* !_MSC_VER */
++#else  /* !MS_WIN32 */
+ 		if (v < 0 || v >= FD_SETSIZE) {
+ 			PyErr_SetString(PyExc_ValueError,
+ 				    "filedescriptor out of range in select()");
+@@ -121,7 +121,7 @@
+ 		}
+ 		if (v > max)
+ 			max = v;
+-#endif /* _MSC_VER */
++#endif /* MS_WIN32 */
+ 		FD_SET(v, set);
+ 
+ 		/* add object and its file descriptor to the list */
+@@ -164,7 +164,7 @@
+ 	for (j = 0; fd2obj[j].sentinel >= 0; j++) {
+ 		fd = fd2obj[j].fd;
+ 		if (FD_ISSET(fd, set)) {
+-#ifndef _MSC_VER
++#ifndef MS_WIN32
+ 			if (fd > FD_SETSIZE) {
+ 				PyErr_SetString(PyExc_SystemError,
+ 			   "filedescriptor out of range returned in select()");
